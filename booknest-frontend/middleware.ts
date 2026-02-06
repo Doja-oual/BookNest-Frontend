@@ -5,22 +5,28 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value;
   const { pathname } = request.nextUrl;
 
-  // Routes publiques
-  const publicRoutes = ['/', '/auth/login', '/auth/register', '/events'];
+  // Routes publiques (pas de vérification de token)
+  const publicRoutes = ['/', '/auth', '/events', '/403'];
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
-  // Routes protégées
-  const protectedRoutes = ['/dashboard', '/profile'];
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  // Si c'est une route publique, laisser passer
+  if (isPublicRoute) {
+    return NextResponse.next();
+  }
+
+  // Routes protégées (participant)
+  const participantRoutes = ['/participant'];
+  const isParticipantRoute = participantRoutes.some(route => pathname.startsWith(route));
 
   // Routes admin
   const adminRoutes = ['/admin'];
   const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
 
   // Redirection vers login si pas de token sur route protégée
-  if ((isProtectedRoute || isAdminRoute) && !token) {
+  if ((isParticipantRoute || isAdminRoute) && !token) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
+    url.searchParams.set('redirect', pathname);
     return NextResponse.redirect(url);
   }
 
