@@ -88,6 +88,8 @@ export const getAuthToken = (): string | null => {
 export const setAuthToken = (token: string): void => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('access_token', token);
+    // Ajouter le token dans les cookies pour le middleware
+    document.cookie = `auth_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
   }
 };
 
@@ -95,6 +97,8 @@ export const removeAuthToken = (): void => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
+    // Supprimer le cookie
+    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   }
 };
 
