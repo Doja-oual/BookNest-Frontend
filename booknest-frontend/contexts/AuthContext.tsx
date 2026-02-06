@@ -62,17 +62,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await authService.login({ email, password });
       
       setAuthToken(response.access_token);
+      
+      const userRole: any = response.user?.role || response.role || UserRole.PARTICIPANT;
+      const user = response.user || { ...response, role: userRole };
+      
       setState({
-        user: response.user,
+        user,
         token: response.access_token,
         isAuthenticated: true,
         isLoading: false,
       });
 
-      if (response.user.role === 'ADMIN') {
-        router.push('/admin/dashboard');
-      } else {
-        router.push('/participant/dashboard');
+      // Utiliser window.location pour forcer le rechargement de la page
+      if (typeof window !== 'undefined') {
+        if (userRole === 'ADMIN' || userRole === UserRole.ADMIN) {
+          window.location.href = '/admin/dashboard';
+        } else {
+          window.location.href = '/participant/dashboard';
+        }
       }
     } catch (error) {
       setState(prev => ({ ...prev, isLoading: false }));
@@ -83,18 +90,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (firstName: string, lastName: string, email: string, password: string, role?: UserRole) => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
-      const response = await authService.register({ firstName, lastName, email, password, role });
+      const response = await authService.register({ firstName, lastName, email, password, role: role || UserRole.PARTICIPANT });
       
       setAuthToken(response.access_token);
+      
+      const userRole: any = response.user?.role || response.role || UserRole.PARTICIPANT;
+      const user = response.user || { ...response, role: userRole };
+      
       setState({
-        user: response.user,
+        user,
         token: response.access_token,
         isAuthenticated: true,
         isLoading: false,
       });
 
-      if (response.user.role === 'ADMIN') {
-        router.push('/admin/dashboard');
+      if (userRole === 'ADMIN' || userRole === UserRole.ADMIN) {
+        router.push('/admin');
       } else {
         router.push('/participant/dashboard');
       }
