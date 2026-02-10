@@ -7,11 +7,14 @@ import type {
 
 const RESERVATIONS_ENDPOINTS = {
   BASE: '/reservations',
-  MY_RESERVATIONS: '/reservations/my-reservations',
+  MY_RESERVATIONS: '/reservations/me',
   BY_ID: (id: string) => `/reservations/${id}`,
+  CANCEL: (id: string) => `/reservations/${id}/cancel`,
   CONFIRM: (id: string) => `/reservations/${id}/confirm`,
   REFUSE: (id: string) => `/reservations/${id}/refuse`,
   ADMIN_CANCEL: (id: string) => `/reservations/${id}/admin-cancel`,
+  EVENT_RESERVATIONS: (eventId: string) => `/reservations/event/${eventId}`,
+  EVENT_STATS: (eventId: string) => `/reservations/event/${eventId}/stats`,
 };
 
 class ReservationsService {
@@ -37,7 +40,10 @@ class ReservationsService {
     const queryString = params.toString();
     const url = queryString ? `${RESERVATIONS_ENDPOINTS.BASE}?${queryString}` : RESERVATIONS_ENDPOINTS.BASE;
     
+    console.log('🌐 [ReservationsService] Calling:', url);
     const response = await axiosInstance.get<Reservation[]>(url);
+    console.log('✅ [ReservationsService] Got', response.data.length, 'reservations');
+    
     return response.data;
   }
 
@@ -47,7 +53,7 @@ class ReservationsService {
   }
 
   async cancel(id: string): Promise<Reservation> {
-    const response = await axiosInstance.delete<Reservation>(RESERVATIONS_ENDPOINTS.BY_ID(id));
+    const response = await axiosInstance.patch<Reservation>(RESERVATIONS_ENDPOINTS.CANCEL(id));
     return response.data;
   }
 
@@ -62,7 +68,22 @@ class ReservationsService {
   }
 
   async adminCancel(id: string): Promise<Reservation> {
-    const response = await axiosInstance.delete<Reservation>(RESERVATIONS_ENDPOINTS.ADMIN_CANCEL(id));
+    const response = await axiosInstance.patch<Reservation>(RESERVATIONS_ENDPOINTS.ADMIN_CANCEL(id));
+    return response.data;
+  }
+
+  async getEventReservations(eventId: string): Promise<Reservation[]> {
+    const response = await axiosInstance.get<Reservation[]>(RESERVATIONS_ENDPOINTS.EVENT_RESERVATIONS(eventId));
+    return response.data;
+  }
+
+  async getEventStats(eventId: string): Promise<any> {
+    const response = await axiosInstance.get(RESERVATIONS_ENDPOINTS.EVENT_STATS(eventId));
+    return response.data;
+  }
+
+  async getByEventId(eventId: string): Promise<Reservation[]> {
+    const response = await axiosInstance.get<Reservation[]>(RESERVATIONS_ENDPOINTS.EVENT_RESERVATIONS(eventId));
     return response.data;
   }
 

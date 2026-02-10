@@ -88,6 +88,7 @@ export enum ReservationStatus {
 export interface Reservation {
   _id: string;
   user: string | User;
+  participant?: User;
   event: string | Event;
   numberOfSeats: number;
   status: ReservationStatus;

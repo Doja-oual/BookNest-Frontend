@@ -1,66 +1,105 @@
+'use client';
+
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import EventCard from '@/components/EventCard';
 import { Event, EventStatus } from '@/types';
-import axios from 'axios';
+import { eventsService } from '@/services';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+function EventsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  
+  const currentPage = parseInt(searchParams.get('page') || '1', 10);
+  const searchQuery = searchParams.get('search') || '';
+  const startDate = searchParams.get('startDate') || '';
 
-interface EventsPageProps {
-  searchParams: {
-    page?: string;
-    search?: string;
-    startDate?: string;
-  };
-}
+  useEffect(() => {
+    console.log('🔄 useEffect triggered - Fetching events...');
+    console.log('📊 Params:', { currentPage, searchQuery, startDate });
+    
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        console.log('⏳ Starting API call...');
+        
+        const data = await eventsService.getAll({
+          status: EventStatus.PUBLISHED,
+          page: currentPage,
+          limit: 10,
+          search: searchQuery || undefined,
+          startDate: startDate || undefined,
+        });
+        
+        console.log('✅ API Response received:', data);
+        console.log('📦 Data type:', Array.isArray(data) ? 'Array' : typeof data);
+        console.log('📊 Data length:', Array.isArray(data) ? data.length : 'Not an array');
+        
+        // Backend returns array directly
+        const eventsList = Array.isArray(data) ? data : [];
+        setEvents(eventsList);
+        setTotal(eventsList.length);
+        
+        console.log('✅ Events set:', eventsList.length, 'events');
+      } catch (error: any) {
+        console.error('❌ Error fetching events:', error);
+        console.error('❌ Error message:', error?.message);
+        console.error('❌ Error response:', error?.response?.data);
+        console.error('❌ Error status:', error?.response?.status);
+        setEvents([]);
+        setTotal(0);
+      } finally {
+        setLoading(false);
+        console.log('✅ Loading complete');
+      }
+    };
 
-async function getPublishedEvents(page: number = 1, search?: string, startDate?: string) {
-  try {
+    fetchEvents();
+  }, [currentPage, searchQuery, startDate]);
+
+  const totalPages = Math.ceil(total / 10);
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const search = formData.get('search') as string;
+    const date = formData.get('startDate') as string;
+    
     const params = new URLSearchParams();
-    params.append('status', EventStatus.PUBLISHED);
-    params.append('page', page.toString());
-    params.append('limit', '10');
+    if (search) params.set('search', search);
+    if (date) params.set('startDate', date);
+    params.set('page', '1');
     
-    if (search) {
-      params.append('search', search);
-    }
-    
-    if (startDate) {
-      params.append('startDate', startDate);
-    }
+    router.push(`/events?${params.toString()}`);
+  };
 
-    const response = await axios.get(`${API_BASE_URL}/events?${params.toString()}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    return {
-      events: response.data.data || response.data || [],
-      total: response.data.total || (Array.isArray(response.data) ? response.data.length : 0),
-      page: response.data.page || page,
-      totalPages: response.data.totalPages || Math.ceil((response.data.total || 0) / 10),
-    };
-  } catch (error) {
-    console.error('Error fetching events:', error);
-    return {
-      events: [],
-      total: 0,
-      page: 1,
-      totalPages: 0,
-    };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-orange-50 via-white to-orange-50">
+        <div className="bg-linear-to-r from-orange-500 to-orange-600 text-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <div className="text-center">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                Découvrez nos Événements
+              </h1>
+              <p className="text-xl text-orange-100 max-w-2xl mx-auto">
+                Explorez notre catalogue d&apos;événements et réservez votre place
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex justify-center items-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+          </div>
+        </div>
+      </div>
+    );
   }
-}
-
-export default async function EventsPage({ searchParams }: EventsPageProps) {
-  const currentPage = parseInt(searchParams.page || '1', 10);
-  const searchQuery = searchParams.search;
-  const startDate = searchParams.startDate;
-
-  const { events, total, page, totalPages } = await getPublishedEvents(
-    currentPage,
-    searchQuery,
-    startDate
-  );
 
   return (
     <div className="min-h-screen bg-linear-to-br from-orange-50 via-white to-orange-50">
@@ -83,7 +122,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         {/* Filtres et Recherche */}
         <div className="mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <form method="GET" className="space-y-4">
+            <form onSubmit={handleSearch} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Recherche */}
                 <div className="md:col-span-2">
@@ -176,13 +215,12 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
               ))}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2">
                 {/* Bouton Précédent */}
-                {page > 1 ? (
+                {currentPage > 1 ? (
                   <Link
-                    href={`/events?page=${page - 1}${searchQuery ? `&search=${searchQuery}` : ''}${startDate ? `&startDate=${startDate}` : ''}`}
+                    href={`/events?page=${currentPage - 1}${searchQuery ? `&search=${searchQuery}` : ''}${startDate ? `&startDate=${startDate}` : ''}`}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,7 +245,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
                       key={pageNum}
                       href={`/events?page=${pageNum}${searchQuery ? `&search=${searchQuery}` : ''}${startDate ? `&startDate=${startDate}` : ''}`}
                       className={`px-4 py-2 rounded-lg transition-colors ${
-                        pageNum === page
+                        pageNum === currentPage
                           ? 'bg-orange-500 text-white font-semibold'
                           : 'border border-gray-300 hover:bg-gray-50'
                       }`}
@@ -218,9 +256,9 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
                 </div>
 
                 {/* Bouton Suivant */}
-                {page < totalPages ? (
+                {currentPage < totalPages ? (
                   <Link
-                    href={`/events?page=${page + 1}${searchQuery ? `&search=${searchQuery}` : ''}${startDate ? `&startDate=${startDate}` : ''}`}
+                    href={`/events?page=${currentPage + 1}${searchQuery ? `&search=${searchQuery}` : ''}${startDate ? `&startDate=${startDate}` : ''}`}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,5 +303,33 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         )}
       </div>
     </div>
+  );
+}
+
+export default function EventsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-linear-to-br from-orange-50 via-white to-orange-50">
+        <div className="bg-linear-to-r from-orange-500 to-orange-600 text-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <div className="text-center">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                Découvrez nos Événements
+              </h1>
+              <p className="text-xl text-orange-100 max-w-2xl mx-auto">
+                Explorez notre catalogue d&apos;événements et réservez votre place
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex justify-center items-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+          </div>
+        </div>
+      </div>
+    }>
+      <EventsContent />
+    </Suspense>
   );
 }

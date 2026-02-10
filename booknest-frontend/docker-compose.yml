@@ -16,6 +16,7 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
     networks:
       - booknest-network
+      - backend-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
       interval: 30s
@@ -25,3 +26,6 @@ services:
 networks:
   booknest-network:
     driver: bridge
+  backend-network:
+    external: true
+    name: booknest-backend_booknest-network

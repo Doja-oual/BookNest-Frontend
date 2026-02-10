@@ -2,6 +2,10 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResp
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
+console.log('🔧 Axios Configuration:');
+console.log('  - API_BASE_URL:', API_BASE_URL);
+console.log('  - NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
